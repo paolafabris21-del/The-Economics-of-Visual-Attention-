@@ -21,8 +21,6 @@ Thumbs.db
 .streamlit/secrets.toml
 
 # Dataset (troppo pesante: gli utenti scaricano a parte)
-images/ALLSTIMULI/
-images/ALLFIXATIONMAPS/
 
 # Logs
 *.log
