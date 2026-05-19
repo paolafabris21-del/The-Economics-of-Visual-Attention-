@@ -13,6 +13,18 @@ def show():
 
     st.markdown("# Image Explorer")
     st.markdown("#### Inspect individual images: product, saliency map, and text bounding boxes")
+    st.markdown("""
+    <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+    📌 <strong>How this page works:</strong> use the filters below to narrow down the images,
+    then select one image to inspect. For each image you will see three panels:<br><br>
+    &nbsp;&nbsp;🖼 <strong>Product Image</strong> — the original e-commerce photo<br>
+    &nbsp;&nbsp;👁 <strong>Saliency Map</strong> — a heatmap of where human eyes actually looked (brighter = more attention)<br>
+    &nbsp;&nbsp;📦 <strong>Bounding Boxes</strong> — the text regions detected, colored by how much attention they captured
+    (blue = low attention, orange = high attention)<br><br>
+    💡 <strong>Try this:</strong> filter by high Text Count (e.g. 15+) and compare the saliency map —
+    you will see attention spread thin across many elements, confirming Banner Blindness.
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("---")
 
     # ── Controls ──────────────────────────────────────────────────────────────
