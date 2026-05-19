@@ -14,10 +14,12 @@ def show():
     st.markdown("#### Does making a text element larger capture more attention?")
     st.markdown("""
     <div class="insight-box">
-    The answer depends on the level of analysis.
-    At <strong>image level</strong>: r = −0.197 (more text area → lower Attention_Ratio, consistent with Banner Blindness).
-    At <strong>region level</strong>: r = +0.71 (larger individual bboxes do capture more total saliency).
-    But r ≈ +0.03 for attention <em>density</em> — larger elements are not more salient per pixel.
+    <strong>In a nutshell:</strong> the answer depends on <em>what</em> you measure and <em>at what scale</em>.<br><br>
+    At <strong>image level</strong>: more text area is weakly associated with <em>lower</em> attention ratio
+    (r = −0.197) — consistent with Banner Blindness.<br>
+    At <strong>region level</strong>: larger individual bounding boxes capture more <em>total</em> saliency
+    (r = +0.71), but <em>not</em> more attention per pixel (r ≈ +0.03).<br><br>
+    👉 Use the toggle below to switch between the two levels of analysis.
     </div>
     """, unsafe_allow_html=True)
 
@@ -33,6 +35,15 @@ def show():
 
     if level == "Image level":
         # ── Image level: Text_Area_Ratio vs Attention_Ratio ───────────────────
+        st.markdown("""
+        <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+        📌 <strong>What we are looking at:</strong> each dot represents one image.
+        The X axis shows <strong>how much of the image is covered by text</strong>
+        (0 = no text, 0.6 = 60% covered).
+        The Y axis shows <strong>how much attention text captures compared to the product</strong>
+        (values > 1 = text outcompetes the product, values < 1 = product wins).
+        </div>
+        """, unsafe_allow_html=True)
         data = df_valid[['Text_Area_Ratio', 'Attention_Ratio',
                          'Text_Count', 'Dominant_Quadrant', 'Image_ID']].dropna()
         r, p = stats.pearsonr(data['Text_Area_Ratio'], data['Attention_Ratio'])
@@ -42,6 +53,14 @@ def show():
         col1.metric("Pearson r", f"{r:.3f}")
         col2.metric("p-value", f"{p:.2e}")
         col3.metric("n images", len(data))
+        
+        st.caption(
+            "⚠️ r = −0.197 is a **weak** correlation, but with p < 0.001 across 914 images "
+            "it is statistically robust — not a coincidence. The trend exists, but other factors "
+            "(position, text type, contrast) influence attention more than size alone."
+        )
+
+
 
         fig = go.Figure()
         for q in ['Q1_TopLeft', 'Q2_TopRight', 'Q3_BottomLeft', 'Q4_BottomRight']:
@@ -74,16 +93,32 @@ def show():
             legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.caption("**Interpretation:** At image level, more text coverage is weakly associated with lower Attention_Ratio — consistent with Banner Blindness. More text area usually means more text elements, which dilutes per-element attention.")
-
+        st.caption(
+            "📖 **How to read this chart:** the orange line (OLS) shows the general trend — "
+            "it slopes slightly downward, confirming that more text = less attention per element. "
+            "Colors indicate the dominant quadrant of each image. No strong quadrant pattern emerges, "
+            "suggesting the effect is general and does not depend on text position."
+        )
     else:
+        st.markdown("""
+        <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+        📌 <strong>What changes at region level:</strong> instead of one dot per image,
+        here <strong>each dot is a single bounding box</strong> (8,447 total).
+        We ask: does a larger bounding box capture more attention than a smaller one?
+        The answer depends on how you define "attention" — use the Y-axis toggle to explore the paradox.
+        </div>
+        """, unsafe_allow_html=True)
+
         # ── Region level: Region_Area_Ratio vs Region_Attention_Ratio ────────
         col_ctrl1, col_ctrl2 = st.columns([2, 2])
         with col_ctrl1:
             y_metric = st.selectbox(
-                "Y-axis metric",
+                "Y-axis metric — choose what 'attention' means:",
                 ["Region_Attention_Ratio (share of total saliency)",
                  "Region_Mean_Saliency (attention density per pixel)"],
+                help="Share of total saliency (r=+0.71): bigger box → more total attention captured. "
+                     "Density per pixel (r≈+0.03): bigger box is NOT more attention-grabbing per pixel. "
+                     "This is the paradox — switch between the two to see it."
             )
         y_col = 'Region_Attention_Ratio' if 'share' in y_metric else 'Region_Mean_Saliency'
         y_label = 'Region Attention Ratio (share of total saliency)' if y_col == 'Region_Attention_Ratio' else 'Region Mean Saliency (avg per pixel)'
@@ -114,6 +149,19 @@ def show():
         col2.metric("p-value", f"{p:.2e}")
         col3.metric("n bboxes", len(data_r))
         col4.metric("Plot capped at", "99th pct")
+
+        if y_col == 'Region_Attention_Ratio':
+            st.caption(
+                "📊 **r = +0.71** — strong positive correlation: larger bounding boxes capture a bigger "
+                "**share** of the image's total saliency. But this does not mean they are more attention-grabbing "
+                "per pixel. Switch to Region_Mean_Saliency to see the other side of the paradox."
+            )
+        else:
+            st.caption(
+                "📊 **r ≈ +0.03** — nearly zero correlation: bounding box size has almost no relationship "
+                "with attention **density** per pixel. A small box can be just as salient per pixel as a large one. "
+                "Size captures more total attention simply because there are more pixels — not because it is intrinsically more effective."
+            )
 
         fig = go.Figure()
         for q in quad_filter:
@@ -147,6 +195,16 @@ def show():
         st.plotly_chart(fig, use_container_width=True)
 
         if y_col == 'Region_Attention_Ratio':
-            st.caption("**r = +0.71** — larger bboxes capture a bigger **share** of the image's total saliency. But switch to Region_Mean_Saliency to see that attention **density** per pixel is nearly uncorrelated with size (r ≈ +0.03).")
+            st.caption(
+                "📖 **How to read this chart:** each dot is one bounding box. "
+                "The orange line slopes upward (r = +0.71) — bigger boxes do capture more total saliency. "
+                "Plot is capped at the 99th percentile to remove extreme outliers and improve readability. "
+                "Now switch Y-axis to Region_Mean_Saliency to see the paradox."
+            )
         else:
-            st.caption("**r ≈ +0.03** — bounding box size has almost no relationship with **attention density** (mean saliency per pixel). Larger elements are not inherently more salient per pixel than smaller ones.")
+            st.caption(
+                "📖 **How to read this chart:** the orange line is nearly flat (r ≈ +0.03) — "
+                "bounding box size tells us almost nothing about attention per pixel. "
+                "The cloud of dots is evenly spread regardless of box size. "
+                "This is the core finding: size captures more attention in absolute terms, but not in efficiency terms."
+            )

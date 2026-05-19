@@ -92,6 +92,7 @@ def show():
             st.image(img, use_column_width=True)
         else:
             st.markdown("_Image not available_")
+        st.caption("The original product photo from the e-commerce dataset.")
 
     # Panel 2: Saliency map (fixMap)
     with col_img2:
@@ -101,6 +102,7 @@ def show():
             st.image(fixmap, use_column_width=True)
         else:
             st.markdown("_Saliency map not available_")
+        st.caption("Eye-tracking fixation map: brighter areas = more human attention. Generated from real viewer data.")
 
     # Panel 3: Bounding box canvas (always available)
     with col_img3:
@@ -156,7 +158,11 @@ def show():
                 plot_bgcolor='#1a1a1a', paper_bgcolor='#1a1a1a',
             )
             st.plotly_chart(fig, use_container_width=True)
-            st.caption("Color: blue = low Region_Attention_Ratio → orange = high")
+            st.caption(
+                "🔵 Blue = low attention captured by this text region   "
+                "🟠 Orange = high attention captured by this text region. "
+                "Numbers inside each box = Region Attention Ratio (share of total image saliency)."
+            )
         else:
             st.markdown("_No text regions detected for this image_")
 
@@ -167,8 +173,23 @@ def show():
         display_cols = ['Region_Index', 'BBox_X', 'BBox_Y', 'BBox_W', 'BBox_H',
                         'Region_Area_Ratio', 'Region_Mean_Saliency',
                         'Region_Attention_Ratio', 'Quadrant']
+        rename_cols = {
+            'BBox_X': 'X position',
+            'BBox_Y': 'Y position',
+            'BBox_W': 'Width (px)',
+            'BBox_H': 'Height (px)',
+            'Region_Area_Ratio': 'Area / Image',
+            'Region_Mean_Saliency': 'Avg Saliency (density)',
+            'Region_Attention_Ratio': 'Attention Share',
+            'Quadrant': 'Screen Position',
+        }
+        st.caption(
+            "**Table guide:** Area/Image = fraction of the image covered by this text box. "
+            "Avg Saliency = mean eye-tracking value per pixel (attention density). "
+            "Attention Share = fraction of the image's total saliency captured by this box."
+        )
         st.dataframe(
-            regions[display_cols].round(4).set_index('Region_Index'),
+            regions[display_cols].rename(columns=rename_cols).round(4).set_index('Region_Index'),
             use_container_width=True,
             height=min(300, 40 + len(regions) * 35),
         )
