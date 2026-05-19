@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # CSV files — put metrics_global_v3.csv and metrics_regions_v2.csv here
+      - ./data:/data:ro
+      # Image folders — point to your ECdata folder
+      - ./images/ALLSTIMULI:/images/ALLSTIMULI:ro
+      - ./images/ALLFIXATIONMAPS:/images/ALLFIXATIONMAPS:ro
+    environment:
+      - DATA_DIR=/data
+      - IMAGES_DIR=/images
+    restart: unless-stopped

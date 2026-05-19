@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.Python
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Dataset (troppo pesante: gli utenti scaricano a parte)
+images/ALLSTIMULI/
+images/ALLFIXATIONMAPS/
+
+# Logs
+*.log
