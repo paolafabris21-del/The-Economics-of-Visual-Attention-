@@ -13,25 +13,77 @@ def show():
 
     st.markdown("# Image Explorer")
     st.markdown("#### Inspect individual images: product, saliency map, and text bounding boxes")
+
+    # ── Page structure explainer ──────────────────────────────────────────────
     st.markdown("""
-    <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
-    📌 <strong>How this page works:</strong> use the filters below to narrow down the images,
-    then select one image to inspect. For each image you will see three panels:<br><br>
-    &nbsp;&nbsp;🖼 <strong>Product Image</strong> — the original e-commerce photo<br>
-    &nbsp;&nbsp;👁 <strong>Saliency Map</strong> — a heatmap of where human eyes actually looked (brighter = more attention)<br>
-    &nbsp;&nbsp;📦 <strong>Bounding Boxes</strong> — the text regions detected, colored by how much attention they captured
-    (blue = low attention, orange = high attention)<br><br>
-    💡 <strong>Try this:</strong> filter by high Text Count (e.g. 15+) and compare the saliency map —
-    you will see attention spread thin across many elements, confirming Banner Blindness.
+    <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.9rem 1.1rem; margin-bottom:0.5rem; font-size:0.88rem; line-height:1.7;">
+    <strong>📌 How this page is structured</strong><br><br>
+    This explorer is divided into <strong>three sections</strong>, each building on the previous:
     </div>
     """, unsafe_allow_html=True)
+
+    # Three-step visual guide
+    st.markdown("""
+    <div style="display:flex; gap:0.75rem; margin:0.5rem 0 1rem 0; font-size:0.85rem;">
+
+      <div style="flex:1; background:#ffffff; border:1px solid #ddd; border-radius:6px; padding:0.9rem 1rem;">
+        <div style="font-size:1.2rem; margin-bottom:0.4rem;">① 🎛️ Filters &amp; Selection</div>
+        <strong>Top controls</strong><br>
+        <span style="color:#555;">Narrow down the 1,000+ images by <em>text count</em> and <em>dominant quadrant</em>,
+        sort the results, then pick a single image to inspect.</span>
+      </div>
+
+      <div style="flex:1; background:#ffffff; border:1px solid #ddd; border-radius:6px; padding:0.9rem 1rem;">
+        <div style="font-size:1.2rem; margin-bottom:0.4rem;">② 📊 Image Metrics</div>
+        <strong>Summary row</strong><br>
+        <span style="color:#555;">Five key numbers for the selected image: Text Count, Attention Ratio,
+        Clutter Index, and Dominant Quadrant — giving you a quick fingerprint before you look at the visuals.</span>
+      </div>
+
+      <div style="flex:1; background:#ffffff; border:1px solid #ddd; border-radius:6px; padding:0.9rem 1rem;">
+        <div style="font-size:1.2rem; margin-bottom:0.4rem;">③ 🖼️ Three Visual Panels</div>
+        <strong>Side-by-side views</strong><br>
+        <span style="color:#555;"><strong>Product Image</strong> → <strong>Saliency Map</strong> → <strong>Bounding Boxes</strong><br>
+        Read left to right: what the ad looked like, where eyes went, which text boxes captured attention.</span>
+      </div>
+
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Panel legend
+    st.markdown("""
+    <div style="background:#f0f4ff; border:1px solid #c8d4f0; border-radius:6px; padding:0.8rem 1.1rem; margin-bottom:0.5rem; font-size:0.85rem; line-height:1.7;">
+    <strong>🖼 Panel guide</strong><br>
+    &nbsp;&nbsp;• <strong>Product Image</strong> — the original e-commerce photo as shown to study participants<br>
+    &nbsp;&nbsp;• <strong>Saliency Map</strong> — a heatmap derived from real eye-tracking data: <em>brighter = more fixations</em>.
+       White/yellow areas are where eyes spent the most time; dark areas were largely ignored<br>
+    &nbsp;&nbsp;• <strong>Bounding Boxes</strong> — each detected text region drawn as a coloured rectangle.
+       Colour encodes how much of the image's total saliency that box captured:
+       <span style="color:#4a90d9;"><strong>blue = low attention</strong></span>,
+       <span style="color:#E85D04;"><strong>orange = high attention</strong></span>.
+       The number inside each box is the <em>Region Attention Ratio</em> (share of total image saliency)
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Suggested workflow
+    st.markdown("""
+    <div style="background:#f0faf0; border:1px solid #b8d8b8; border-radius:6px; padding:0.75rem 1.1rem; margin-bottom:1rem; font-size:0.84rem; line-height:1.65;">
+    💡 <strong>Suggested explorations:</strong><br>
+    &nbsp;&nbsp;• Set <em>Text Count</em> to <strong>15+</strong> → see how attention scatters across many elements (Banner Blindness in action)<br>
+    &nbsp;&nbsp;• Set <em>Text Count</em> to <strong>1–3</strong> → see how a single large text element dominates the saliency map<br>
+    &nbsp;&nbsp;• Sort by <strong>Attention Ratio</strong> (descending) → find images where text completely outcompeted the product photo<br>
+    &nbsp;&nbsp;• Sort by <strong>Clutter Index</strong> → explore the most visually cluttered ads
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
-    # ── Controls ──────────────────────────────────────────────────────────────
+    # ── Section 1: Filters & Selection ───────────────────────────────────────
+    st.markdown("##### ① Filter & Select an Image")
+
     col_ctrl1, col_ctrl2 = st.columns([2, 2])
 
     with col_ctrl1:
-        # Filter by text count
         tc_range = st.slider("Filter images by Text Count", 0, 53, (1, 30))
 
     with col_ctrl2:
@@ -41,7 +93,6 @@ def show():
             format_func=lambda x: 'All quadrants' if x == 'All' else QUAD_LABELS[x],
         )
 
-    # Apply filters
     mask = (df['Text_Count'] >= tc_range[0]) & (df['Text_Count'] <= tc_range[1])
     if quad_filter != 'All':
         mask &= df['Dominant_Quadrant'] == quad_filter
@@ -55,7 +106,6 @@ def show():
 
     col_pick1, col_pick2 = st.columns([2, 2])
     with col_pick1:
-        # Sort options
         sort_by = st.selectbox(
             "Sort images by",
             ['Image_ID', 'Attention_Ratio', 'Clutter_Index', 'Text_Count'],
@@ -71,11 +121,12 @@ def show():
 
     st.markdown("---")
 
-    # ── Load selected image data ───────────────────────────────────────────────
+    # ── Section 2: Image Metrics ──────────────────────────────────────────────
+    st.markdown("##### ② Image Metrics")
+
     row = df[df['Image_ID'] == selected_id].iloc[0]
     regions = df_r[df_r['Image_ID'] == selected_id].copy()
 
-    # Metrics row
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Image ID", selected_id)
     c2.metric("Text Elements", int(row['Text_Count']))
@@ -83,9 +134,20 @@ def show():
     c4.metric("Clutter Index", f"{row['Clutter_Index']:.2f}" if pd.notna(row['Clutter_Index']) else "N/A")
     c5.metric("Dominant Quadrant", QUAD_LABELS.get(row['Dominant_Quadrant'], row['Dominant_Quadrant']))
 
+    st.markdown("""
+    <div style="font-size:0.8rem; color:#666; line-height:1.6; margin-top:0.3rem;">
+    <strong>Attention Ratio</strong> = saliency on text / saliency on product
+    &nbsp;|&nbsp; <strong>Clutter Index</strong> = measure of visual complexity (higher = more cluttered)
+    &nbsp;|&nbsp; <strong>Dominant Quadrant</strong> = screen region containing the most text
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
-    # ── Image panels ─────────────────────────────────────────────────────────
+    # ── Section 3: Three Visual Panels ───────────────────────────────────────
+    st.markdown("##### ③ Visual Panels")
+    st.caption("Read left → right: original ad · where eyes went · which text boxes captured attention")
+
     stim_path   = get_image_path(selected_id, 'stimulus')
     fixmap_path = get_image_path(selected_id, 'fixmap')
 
@@ -96,36 +158,34 @@ def show():
 
     col_img1, col_img2, col_img3 = st.columns(3)
 
-    # Panel 1: Original product image
     with col_img1:
-        st.markdown("**Product Image**")
+        st.markdown("**🖼 Product Image**")
         if stim_path:
             img = Image.open(stim_path)
             st.image(img, use_column_width=True)
         else:
             st.markdown("_Image not available_")
-        st.caption("The original product photo from the e-commerce dataset.")
+        st.caption("The original product photo from the e-commerce dataset, as shown to study participants.")
 
-    # Panel 2: Saliency map (fixMap)
     with col_img2:
-        st.markdown("**Saliency Map**")
+        st.markdown("**👁 Saliency Map**")
         if fixmap_path:
             fixmap = Image.open(fixmap_path)
             st.image(fixmap, use_column_width=True)
         else:
             st.markdown("_Saliency map not available_")
-        st.caption("Eye-tracking fixation map: brighter areas = more human attention. Generated from real viewer data.")
+        st.caption(
+            "Eye-tracking fixation map from real viewer data. "
+            "**Bright/white** = high fixation density. **Dark** = little or no attention."
+        )
 
-    # Panel 3: Bounding box canvas (always available)
     with col_img3:
-        st.markdown("**Bounding Boxes on Canvas**")
+        st.markdown("**📦 Bounding Boxes**")
         if len(regions) > 0:
             fig = go.Figure()
-            # Background
             fig.add_shape(type='rect', x0=0, y0=0, x1=720, y1=720,
                           fillcolor='#1a1a1a', line_color='#333')
 
-            # If fixmap available, use it as background image
             if fixmap_path:
                 import base64
                 with open(fixmap_path, 'rb') as f:
@@ -137,15 +197,12 @@ def show():
                          sizing="stretch", opacity=0.6, layer="below")
                 )
 
-            # Draw bboxes colored by Region_Attention_Ratio
             max_rar = regions['Region_Attention_Ratio'].max() if len(regions) > 0 else 1
             for _, reg in regions.iterrows():
                 x, y, w, h = reg['BBox_X'], reg['BBox_Y'], reg['BBox_W'], reg['BBox_H']
-                # Flip Y (image coords: y=0 top; plotly: y=0 bottom)
                 y_plot  = 720 - y - h
                 y2_plot = 720 - y
                 intensity = reg['Region_Attention_Ratio'] / (max_rar + 1e-9)
-                # Color: low=blue, high=orange
                 r_ch = int(74  + (228-74)  * intensity)
                 g_ch = int(144 + (93-144)  * intensity)
                 b_ch = int(217 + (4-217)   * intensity)
@@ -171,17 +228,26 @@ def show():
             )
             st.plotly_chart(fig, use_container_width=True)
             st.caption(
-                "🔵 Blue = low attention captured by this text region   "
-                "🟠 Orange = high attention captured by this text region. "
-                "Numbers inside each box = Region Attention Ratio (share of total image saliency)."
+                "🔵 **Blue** = low attention captured by this text region &nbsp;&nbsp;"
+                "🟠 **Orange** = high attention captured by this text region. "
+                "Number inside each box = Region Attention Ratio (share of total image saliency)."
             )
         else:
             st.markdown("_No text regions detected for this image_")
 
-    # ── Regions detail table ──────────────────────────────────────────────────
+    # ── Section 4: Regions detail table ──────────────────────────────────────
     if len(regions) > 0:
         st.markdown("---")
-        st.markdown("##### Bounding Box Details")
+        st.markdown("##### 📋 Bounding Box Details — per-region breakdown")
+        st.markdown("""
+        <div style="font-size:0.83rem; color:#555; line-height:1.6; margin-bottom:0.5rem;">
+        Each row is one detected text region in the selected image.
+        <strong>Area / Image</strong> = fraction of image area covered by this box.
+        <strong>Avg Saliency (density)</strong> = mean eye-tracking intensity per pixel — how attention-dense the box is.
+        <strong>Attention Share</strong> = fraction of the image's <em>total</em> saliency captured by this box (used for the colour encoding above).
+        </div>
+        """, unsafe_allow_html=True)
+
         display_cols = ['Region_Index', 'BBox_X', 'BBox_Y', 'BBox_W', 'BBox_H',
                         'Region_Area_Ratio', 'Region_Mean_Saliency',
                         'Region_Attention_Ratio', 'Quadrant']
@@ -195,11 +261,6 @@ def show():
             'Region_Attention_Ratio': 'Attention Share',
             'Quadrant': 'Screen Position',
         }
-        st.caption(
-            "**Table guide:** Area/Image = fraction of the image covered by this text box. "
-            "Avg Saliency = mean eye-tracking value per pixel (attention density). "
-            "Attention Share = fraction of the image's total saliency captured by this box."
-        )
         st.dataframe(
             regions[display_cols].rename(columns=rename_cols).round(4).set_index('Region_Index'),
             use_container_width=True,

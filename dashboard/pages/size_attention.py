@@ -5,6 +5,15 @@ import numpy as np
 from scipy import stats
 from utils.data import load_global, load_regions, QUAD_COLORS, QUAD_LABELS
 
+def _fmt_pval(p: float) -> str:
+    """Format p-values gracefully, handling floating-point underflow."""
+    if p == 0.0:
+        return "< 1e-300"
+    elif p < 0.001:
+        return f"{p:.2e}"
+    else:
+        return f"{p:.4f}"
+
 def show():
     df   = load_global()
     df_r = load_regions()
@@ -12,6 +21,8 @@ def show():
 
     st.markdown("# Size vs. Attention")
     st.markdown("#### Does making a text element larger capture more attention?")
+
+    # ── Main insight box ──────────────────────────────────────────────────────
     st.markdown("""
     <div class="insight-box">
     <strong>In a nutshell:</strong> the answer depends on <em>what</em> you measure and <em>at what scale</em>.<br><br>
@@ -23,6 +34,29 @@ def show():
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Conceptual explainer ──────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#fff8f0; border:1px solid #f0e0c8; border-radius:6px; padding:1rem 1.2rem; margin:0.8rem 0 1rem 0; font-size:0.87rem; line-height:1.7;">
+    <strong>📐 Key concepts before you dive in</strong><br><br>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:38%; vertical-align:top;">
+          <strong>Text Area Ratio</strong><br>
+          <span style="color:#555;">Fraction of the whole image covered by all text elements combined (0 = no text, 1 = entire image is text).</span>
+        </td>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:38%; vertical-align:top;">
+          <strong>Attention Ratio</strong><br>
+          <span style="color:#555;">Saliency captured by text ÷ saliency captured by the product. Values &gt; 1 mean text "won"; values &lt; 1 mean the product photo attracted more gaze.</span>
+        </td>
+        <td style="padding:0.3rem 0 0.3rem 0; width:24%; vertical-align:top;">
+          <strong>OLS line</strong><br>
+          <span style="color:#555;">Orange regression line showing the overall trend across all data points.</span>
+        </td>
+      </tr>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
     level = st.radio(
@@ -31,10 +65,26 @@ def show():
         horizontal=True,
     )
 
+    # ── Level description pills ───────────────────────────────────────────────
+    if level == "Image level":
+        st.markdown("""
+        <div style="display:inline-block; background:#e8f4e8; border:1px solid #b8d8b8; border-radius:4px;
+                    padding:0.25rem 0.75rem; font-size:0.82rem; color:#2d6a2d; margin-bottom:0.5rem;">
+        📊 <strong>Image level</strong> — 1 dot = 1 product image &nbsp;|&nbsp; n = 914 images
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="display:inline-block; background:#e8eef8; border:1px solid #b8c8e8; border-radius:4px;
+                    padding:0.25rem 0.75rem; font-size:0.82rem; color:#2d3d6a; margin-bottom:0.5rem;">
+        📊 <strong>Region level</strong> — 1 dot = 1 bounding box &nbsp;|&nbsp; n = 8,447 boxes across all images
+        </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("---")
 
     if level == "Image level":
-        # ── Image level: Text_Area_Ratio vs Attention_Ratio ───────────────────
+        # ── Image level ───────────────────────────────────────────────────────
         st.markdown("""
         <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
         📌 <strong>What we are looking at:</strong> each dot represents one image.
@@ -44,6 +94,7 @@ def show():
         (values > 1 = text outcompetes the product, values < 1 = product wins).
         </div>
         """, unsafe_allow_html=True)
+
         data = df_valid[['Text_Area_Ratio', 'Attention_Ratio',
                          'Text_Count', 'Dominant_Quadrant', 'Image_ID']].dropna()
         r, p = stats.pearsonr(data['Text_Area_Ratio'], data['Attention_Ratio'])
@@ -51,16 +102,14 @@ def show():
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Pearson r", f"{r:.3f}")
-        col2.metric("p-value", f"{p:.2e}")
+        col2.metric("p-value", _fmt_pval(p))
         col3.metric("n images", len(data))
-        
+
         st.caption(
             "⚠️ r = −0.197 is a **weak** correlation, but with p < 0.001 across 914 images "
             "it is statistically robust — not a coincidence. The trend exists, but other factors "
             "(position, text type, contrast) influence attention more than size alone."
         )
-
-
 
         fig = go.Figure()
         for q in ['Q1_TopLeft', 'Q2_TopRight', 'Q3_BottomLeft', 'Q4_BottomRight']:
@@ -93,13 +142,28 @@ def show():
             legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
         )
         st.plotly_chart(fig, use_container_width=True)
+
         st.caption(
             "📖 **How to read this chart:** the orange line (OLS) shows the general trend — "
             "it slopes slightly downward, confirming that more text = less attention per element. "
             "Colors indicate the dominant quadrant of each image. No strong quadrant pattern emerges, "
             "suggesting the effect is general and does not depend on text position."
         )
+
+        # ── Image-level takeaway ──────────────────────────────────────────────
+        st.markdown("""
+        <div style="background:#fdf3e7; border-left:4px solid #E85D04; padding:0.8rem 1rem; margin-top:1.2rem; font-size:0.87rem; line-height:1.65;">
+        <strong>🔍 Takeaway — Image level:</strong><br>
+        Adding more text to an ad does <em>not</em> make the text more compelling to viewers.
+        On the contrary, higher text coverage is slightly associated with <em>less</em> relative attention going to text (r = −0.197).
+        This is consistent with <strong>Banner Blindness</strong>: when text fills too much of the image,
+        viewers start ignoring it and redirect gaze to the product photo.
+        The effect is weak but statistically reliable across the full dataset (p &lt; 0.001).
+        </div>
+        """, unsafe_allow_html=True)
+
     else:
+        # ── Region level ──────────────────────────────────────────────────────
         st.markdown("""
         <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
         📌 <strong>What changes at region level:</strong> instead of one dot per image,
@@ -109,7 +173,20 @@ def show():
         </div>
         """, unsafe_allow_html=True)
 
-        # ── Region level: Region_Area_Ratio vs Region_Attention_Ratio ────────
+        # ── Paradox explainer ─────────────────────────────────────────────────
+        st.markdown("""
+        <div style="background:#f0f4ff; border:1px solid #c8d4f0; border-radius:6px; padding:0.9rem 1.1rem; margin-bottom:1rem; font-size:0.86rem; line-height:1.65;">
+        <strong>⚖️ The Size Paradox — two ways to measure "attention":</strong><br><br>
+        <strong>Total saliency share (r = +0.71):</strong> a bigger box captures more of the image's total fixation mass —
+        but only because it has more pixels. Think of it like a bucket: a bigger bucket collects more rain even if
+        the rain density is the same everywhere.<br><br>
+        <strong>Attention density per pixel (r ≈ +0.03):</strong> divide total saliency by box area and the
+        correlation nearly vanishes. Large boxes are <em>not intrinsically more eye-catching per pixel</em>
+        than small ones. <strong>Size alone does not make text more salient — it just accumulates more
+        fixations by offering a larger target.</strong>
+        </div>
+        """, unsafe_allow_html=True)
+
         col_ctrl1, col_ctrl2 = st.columns([2, 2])
         with col_ctrl1:
             y_metric = st.selectbox(
@@ -121,7 +198,9 @@ def show():
                      "This is the paradox — switch between the two to see it."
             )
         y_col = 'Region_Attention_Ratio' if 'share' in y_metric else 'Region_Mean_Saliency'
-        y_label = 'Region Attention Ratio (share of total saliency)' if y_col == 'Region_Attention_Ratio' else 'Region Mean Saliency (avg per pixel)'
+        y_label = ('Region Attention Ratio (share of total saliency)'
+                   if y_col == 'Region_Attention_Ratio'
+                   else 'Region Mean Saliency (avg per pixel)')
 
         with col_ctrl2:
             quad_filter = st.multiselect(
@@ -136,7 +215,6 @@ def show():
              'Quadrant', 'Image_ID', 'Region_Index']
         ].dropna()
 
-        # Cap at 99th pct for readability
         cap_x = data_r['Region_Area_Ratio'].quantile(0.99)
         cap_y = data_r[y_col].quantile(0.99)
         data_plot = data_r[(data_r['Region_Area_Ratio'] <= cap_x) & (data_r[y_col] <= cap_y)]
@@ -146,9 +224,16 @@ def show():
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Pearson r", f"{r:.3f}")
-        col2.metric("p-value", f"{p:.2e}")
+        col2.metric("p-value", _fmt_pval(p))
         col3.metric("n bboxes", len(data_r))
         col4.metric("Plot capped at", "99th pct")
+
+        if p == 0.0:
+            st.caption(
+                "ℹ️ **p-value shown as < 1e-300**: the true p-value is so small (well below 10⁻³⁰⁰) "
+                "that it underflows Python's 64-bit float representation and rounds to exactly 0. "
+                "This is expected with n = 8,447 and r = 0.71 — the result is overwhelmingly significant."
+            )
 
         if y_col == 'Region_Attention_Ratio':
             st.caption(
@@ -208,3 +293,15 @@ def show():
                 "The cloud of dots is evenly spread regardless of box size. "
                 "This is the core finding: size captures more attention in absolute terms, but not in efficiency terms."
             )
+
+        # ── Region-level takeaway ─────────────────────────────────────────────
+        st.markdown("""
+        <div style="background:#fdf3e7; border-left:4px solid #E85D04; padding:0.8rem 1rem; margin-top:1.2rem; font-size:0.87rem; line-height:1.65;">
+        <strong>🔍 Takeaway — Region level:</strong><br>
+        Making a text element bigger <em>does</em> accumulate more total fixations (r = +0.71),
+        but only as a side-effect of having more pixels to land on — not because it is intrinsically
+        more compelling. Attention density per pixel is unaffected by size (r ≈ +0.03).
+        The practical implication: <strong>if you want to maximise attention <em>efficiency</em>,
+        size is not the lever to pull</strong> — contrast, position, and message clarity matter more.
+        </div>
+        """, unsafe_allow_html=True)
