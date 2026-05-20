@@ -57,6 +57,7 @@ def show():
                     fillcolor=QUAD_COLORS[q],
                     opacity=0.6,
                     boxmean=True,
+                    hoveron='points',
                     hovertemplate="<b>%{x}</b><br>Attention Ratio: %{y:.2f}<extra></extra>",
                 ))
             fig.update_layout(
@@ -65,6 +66,7 @@ def show():
                 margin=dict(l=0, r=0, t=44, b=0),
                 xaxis=dict(showgrid=False),
                 yaxis=dict(title='Attention Ratio', showgrid=True, gridcolor='#f0ece4'),
+                hovermode='closest',
                 showlegend=True,
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, x=0,
                             font_size=11),
@@ -120,6 +122,7 @@ def show():
                 margin=dict(l=0, r=0, t=44, b=0),
                 xaxis=dict(showgrid=False),
                 yaxis=dict(showgrid=True, gridcolor='#f0ece4', title='Images'),
+                hovermode='closest',
                 showlegend=True,
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, x=0,
                             font_size=11),
@@ -144,6 +147,8 @@ def show():
                     line_color=QUAD_COLORS[q],
                     meanline_visible=True,
                     box_visible=True,
+                    points='outliers',
+                    hoveron='points',
                     hovertemplate="<b>%{x}</b><br>Saliency: %{y:.1f}<extra></extra>",
                 ))
             kw_groups = [df_r[df_r['Quadrant'] == q]['Region_Mean_Saliency'].dropna().values
@@ -155,6 +160,7 @@ def show():
                 margin=dict(l=0, r=0, t=44, b=0),
                 xaxis=dict(showgrid=False),
                 yaxis=dict(title='Region Mean Saliency', showgrid=True, gridcolor='#f0ece4'),
+                hovermode='closest',
                 showlegend=True,
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, x=0,
                             font_size=11),
