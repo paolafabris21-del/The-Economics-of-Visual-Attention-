@@ -118,7 +118,15 @@ with st.sidebar:
 if "Overview" in page:
     from pages.overview import show; show()
 elif "Banner Blindness" in page:
-    from pages.banner_blindness import show; show()
+    import importlib
+    import pages.banner_blindness as banner_blindness
+
+    importlib.reload(banner_blindness)
+
+    st.sidebar.success("Banner Blindness reloaded")
+    st.sidebar.code(banner_blindness.__file__)
+
+    banner_blindness.show()
 elif "Spatial" in page:
     from pages.spatial import show; show()
 elif "Size" in page:

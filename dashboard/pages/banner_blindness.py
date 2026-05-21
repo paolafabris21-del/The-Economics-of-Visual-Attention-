@@ -12,18 +12,32 @@ def show():
 
     st.markdown("# Banner Blindness")
     st.markdown("#### Does adding more text elements dilute attention per element?")
+
     st.markdown("""
-    <div class="insight-box">
-    The <strong>Clutter Index</strong> measures average saliency per text element
-    (Avg_Text_Saliency / Text_Count). The Banner Blindness hypothesis predicts it decreases
-    as Text_Count increases. &nbsp;·&nbsp; <strong>r = −0.489, p &lt; 0.001, n = 914</strong>
+    <div style="
+        font-size: 0.95rem;
+        color: #5F6472;
+        line-height: 1.65;
+        max-width: 860px;
+        margin-top: 0.4rem;
+        margin-bottom: 0.2rem;
+        layout="wide"
+    ">
+        Banner blindness is a well-documented cognitive phenomenon: when a visual scene becomes
+        crowded with text, the human eye stops processing each element individually and begins
+        to ignore them as background noise. This section investigates whether that effect is
+        measurable in our dataset. Using the <strong>Clutter Index</strong>
+        (average saliency per text element) and the <strong>Attention Ratio</strong>
+        (text attention vs. product attention), we test whether images with a higher number
+        of text elements systematically receive less visual attention per element —
+        and whether occupying more screen area is enough to compensate.
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # ── Controls ──────────────────────────────────────────────────────────────
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([2, 2, 2])
+    col_ctrl1, col_ctrl2 = st.columns([2, 2])
     with col_ctrl1:
         text_range = st.slider(
             "Filter: Text Count range",
@@ -37,8 +51,6 @@ def show():
             default=list(QUAD_LABELS.keys())[:-1],
             format_func=lambda x: QUAD_LABELS[x],
         )
-    with col_ctrl3:
-        log_scale = st.toggle("Log scale (Y axis)", value=False)
 
     # ── Filter data ───────────────────────────────────────────────────────────
     mask = (
@@ -47,6 +59,9 @@ def show():
         (df_valid['Dominant_Quadrant'].isin(quad_filter))
     )
     filtered = df_valid[mask].dropna(subset=['Text_Count', 'Clutter_Index'])
+    if filtered.empty:
+        st.warning("No images match the selected filters. Please adjust the filters.")
+        return
 
     # Recompute r on filtered data
     if len(filtered) > 2:
@@ -63,91 +78,393 @@ def show():
     c4.metric("Avg Clutter Index", f"{filtered['Clutter_Index'].mean():.2f}")
 
     st.markdown("---")
-
     # ── Main scatter ──────────────────────────────────────────────────────────
-    col_main, col_side = st.columns([3, 1])
+# ── Palette & bin setup ──────────────────────────────────────────────────
+    BINS       = [1, 3, 6, 10, 15, 54]
+    BIN_LABELS = ["1–2", "3–5", "6–9", "10–14", "15+"]
+    BIN_COLORS = ["#C1440E", "#D85A30", "#E89B6A", "#378ADD", "#185FA5"]
+    SWATCH     = ["#C1440E", "#D85A30", "#E89B6A", "#378ADD", "#185FA5"]
+    THRESHOLD  = 7.0   # banner-blindness critical line
 
-    with col_main:
-        st.markdown("##### Text Count vs. Clutter Index")
+    # ── Shared bin computation ───────────────────────────────────────────────
+    filtered_bins = filtered.copy()
+    filtered_bins["bin"] = pd.cut(
+        filtered_bins["Text_Count"],
+        bins=BINS, labels=BIN_LABELS, right=False,
+    )
 
-        fig = go.Figure()
+    bin_stats = (
+        filtered_bins
+        .groupby("bin", observed=True)
+        .agg(
+            median_ci  = ("Clutter_Index",   "median"),
+            q1_ci      = ("Clutter_Index",   lambda s: s.quantile(0.25)),
+            q3_ci      = ("Clutter_Index",   lambda s: s.quantile(0.75)),
+            median_ar  = ("Attention_Ratio", "median"),
+            q1_ar      = ("Attention_Ratio", lambda s: s.quantile(0.25)),
+            q3_ar      = ("Attention_Ratio", lambda s: s.quantile(0.75)),
+            n          = ("Clutter_Index",   "count"),
+        )
+        .reset_index()
+    )
+    bin_stats["bin"]    = bin_stats["bin"].astype(str)
+    ref_ci = bin_stats["median_ci"].iloc[0]
+    ref_ar = bin_stats["median_ar"].iloc[0]
+    bin_stats["pct_ci"] = ((bin_stats["median_ci"] - ref_ci) / ref_ci * 100).round(1)
+    bin_stats["pct_ar"] = ((bin_stats["median_ar"] - ref_ar) / ref_ar * 100).round(1)
 
-        # Points colored by quadrant
-        for q in quad_filter:
-            sub = filtered[filtered['Dominant_Quadrant'] == q]
-            fig.add_trace(go.Scatter(
-                x=sub['Text_Count'], y=sub['Clutter_Index'],
-                mode='markers',
-                name=QUAD_LABELS[q],
-                marker=dict(color=QUAD_COLORS[q], size=6, opacity=0.55,
-                            line=dict(width=0.5, color='white')),
-                hovertemplate=(
-                    "<b>Image %{customdata[0]}</b><br>"
-                    "Text Count: %{x}<br>"
-                    "Clutter Index: %{y:.2f}<br>"
-                    "Attention Ratio: %{customdata[1]:.2f}<br>"
+    # ════════════════════════════════════════════════════════════════════════
+    # CHART 1 — Binned bar + IQR + trend  (full width)
+    # ════════════════════════════════════════════════════════════════════════
+    st.markdown("##### Text Count vs Clutter Index")
+
+    fig_main = go.Figure()
+
+    # IQR band
+    fig_main.add_trace(go.Scatter(
+        x   = BIN_LABELS + BIN_LABELS[::-1],
+        y   = list(bin_stats["q3_ci"]) + list(bin_stats["q1_ci"])[::-1],
+        fill      = "toself",
+        fillcolor = "rgba(180,180,180,0.18)",
+        line      = dict(color="rgba(0,0,0,0)"),
+        hoverinfo = "skip",
+        showlegend= True,
+        name      = "IQR (Q1–Q3)",
+    ))
+
+    # Bars
+    fig_main.add_trace(go.Bar(
+        x             = BIN_LABELS,
+        y             = bin_stats["median_ci"],
+        marker_color  = BIN_COLORS,
+        marker_line_width = 0,
+        name          = "Median Clutter Index",
+        text          = [f"{v:.1f}" for v in bin_stats["median_ci"]],
+        textposition  = "outside",
+        textfont      = dict(size=12, color="#5F6472"),
+        hovertemplate = (
+            "<b>Range:</b> %{x} elements<br>"
+            "<b>Median CI:</b> %{y:.2f}<br>"
+            "<b>Images:</b> %{customdata[0]}<br>"
+            "<b>Δ vs 1–2 elements:</b> %{customdata[1]:.1f}%"
+            "<extra></extra>"
+        ),
+        customdata = bin_stats[["n", "pct_ci"]].values,
+    ))
+
+    # Trend line
+    fig_main.add_trace(go.Scatter(
+        x    = BIN_LABELS,
+        y    = bin_stats["median_ci"],
+        mode = "lines+markers",
+        name = "Median trend",
+        line = dict(color="#E85D04", width=2.5, dash="dot"),
+        marker = dict(size=8, color="white", line=dict(color="#E85D04", width=2.5)),
+        hoverinfo = "skip",
+    ))
+
+    # Banner-blindness threshold
+    fig_main.add_hline(
+        y=THRESHOLD,
+        line     = dict(color="#A32D2D", width=1.5, dash="dash"),
+        annotation_text     = f"⚠ Banner blindness threshold (~{THRESHOLD:.0f})",
+        annotation_position = "top right",
+        annotation_font     = dict(size=11, color="#A32D2D"),
+    )
+
+    fig_main.update_layout(
+        title = dict(
+            text     = "   ",
+            font     = dict(size=15, family="Syne"),
+            x        = 0,
+            xanchor  = "left",
+            pad      = dict(b=10),
+        ),
+        plot_bgcolor  = "white",
+        paper_bgcolor = "white",
+        font_family   = "Syne",
+        height        = 420,
+        margin        = dict(l=10, r=10, t=75, b=20),
+        xaxis = dict(
+            title    = "Text elements per image (range)",
+            showgrid = False,
+            zeroline = False,
+        ),
+        yaxis = dict(
+            title     = "Median Clutter Index",
+            showgrid  = True,
+            gridcolor = "#f0ece4",
+            zeroline  = False,
+            range     = [0, bin_stats["q3_ci"].max() * 1.3],
+        ),
+        legend = dict(
+            orientation="h", yanchor="bottom", y=1.06,
+            xanchor="left", x=0, font=dict(size=11),
+        ),
+        bargap = 0.35,
+    )
+
+    st.plotly_chart(fig_main, use_container_width=True)
+
+    st.markdown(f"""
+    <div style="
+        font-size:0.88rem; color:#5F6472; line-height:1.5;
+        border-left: 3px solid #E85D04; padding-left: 12px;
+        margin-top:-0.4rem; margin-bottom:1.2rem;
+    ">
+        The <strong>Clutter Index</strong> measures average visual saliency per text element
+        (Avg_Text_Saliency / Text_Count). Bars show the median per range: with 1–2 elements
+        the value reaches ~<strong>{bin_stats['median_ci'].iloc[0]:.0f}</strong>, while with
+        15+ elements it drops to ~<strong>{bin_stats['median_ci'].iloc[-1]:.1f}</strong>
+        (<strong>{abs(bin_stats['pct_ci'].iloc[-1]):.0f}% less</strong>).
+        The dashed red line marks the critical threshold: below ~7, attention per element is
+        so diluted that each text becomes practically invisible — the <em>banner blindness</em>
+        effect. Sample: <strong>{len(filtered)} images</strong>
+        (r = {r:.3f}, p = {p:.2e}).
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border:none;border-top:1px solid #e8e4dc;margin:0.5rem 0 1.2rem'>",
+                unsafe_allow_html=True)
+
+    # ════════════════════════════════════════════════════════════════════════
+    # CHART 2 + CHART 3  side-by-side
+    # ════════════════════════════════════════════════════════════════════════
+    col_left, col_right = st.columns(2)
+
+    # ── CHART 2 — Text_Area_Ratio vs Attention_Ratio scatter ────────────────
+    with col_left:
+        st.markdown("##### Text Area vs. Attention")
+
+        scatter_df = filtered_bins.dropna(subset=["Text_Area_Ratio", "Attention_Ratio", "bin"])
+
+        fig2 = go.Figure()
+
+        # Parity reference line (AR = 1)
+        fig2.add_hline(
+            y=1,
+            line     = dict(color="#A32D2D", width=1.5, dash="dash"),
+            annotation_text     = "Text = Product (AR = 1)",
+            annotation_position = "top right",
+            annotation_font     = dict(size=10, color="#A32D2D"),
+        )
+
+        # One trace per bin
+        for i, label in enumerate(BIN_LABELS):
+            sub = scatter_df[scatter_df["bin"] == label]
+            if sub.empty:
+                continue
+            fig2.add_trace(go.Scatter(
+                x    = sub["Text_Area_Ratio"],
+                y    = sub["Attention_Ratio"],
+                mode = "markers",
+                name = f"{label} elements",
+                marker = dict(
+                    color   = BIN_COLORS[i],
+                    size    = 5,
+                    opacity = 0.45,
+                    line    = dict(width=0),
+                ),
+                hovertemplate = (
+                    "<b>Image:</b> %{customdata[0]}<br>"
+                    "Text Area Ratio: %{x:.3f}<br>"
+                    "Attention Ratio: %{y:.3f}<br>"
+                    "Text Count: %{customdata[1]}"
                     "<extra></extra>"
                 ),
-                customdata=sub[['Image_ID', 'Attention_Ratio']].values,
+                customdata = sub[["Image_ID", "Text_Count"]].values,
             ))
 
-        # OLS trend line
-        if len(filtered) > 2:
-            x_range = np.linspace(filtered['Text_Count'].min(), filtered['Text_Count'].max(), 200)
-            fig.add_trace(go.Scatter(
-                x=x_range, y=slope * x_range + intercept,
-                mode='lines', name=f'OLS trend (r={r:.3f})',
-                line=dict(color='#E85D04', width=2.5, dash='solid'),
-                hoverinfo='skip',
-            ))
-
-        fig.update_layout(
-            plot_bgcolor='white', paper_bgcolor='white',
-            font_family="Syne", height=420,
-            margin=dict(l=0, r=0, t=10, b=0),
-            xaxis=dict(title='Text Count (# text elements per image)', showgrid=False, zeroline=False),
-            yaxis=dict(
-                title='Clutter Index (avg saliency per element)',
-                showgrid=True, gridcolor='#f0ece4', zeroline=False,
-                type='log' if log_scale else 'linear',
+        # Bin medians as diamond markers
+        bin_area = (
+            scatter_df.groupby("bin", observed=True)
+            .agg(med_x=("Text_Area_Ratio", "median"), med_y=("Attention_Ratio", "median"))
+            .reset_index()
+        )
+        fig2.add_trace(go.Scatter(
+            x    = bin_area["med_x"],
+            y    = bin_area["med_y"],
+            mode = "markers+text",
+            name = "Bin median",
+            marker = dict(
+                size   = 14,
+                color  = BIN_COLORS[:len(bin_area)],
+                symbol = "diamond",
+                line   = dict(color="white", width=1.5),
             ),
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col_side:
-        st.markdown("##### Clutter Index by Text Count bin")
-        bins = [1, 3, 6, 10, 15, 54]
-        labels = ['1–2', '3–5', '6–9', '10–14', '15+']
-        filtered['bin'] = pd.cut(filtered['Text_Count'], bins=bins, labels=labels, right=False)
-        bin_stats = filtered.groupby('bin', observed=True)['Clutter_Index'].median().reset_index()
-
-        fig2 = go.Figure(go.Bar(
-            x=bin_stats['Clutter_Index'], y=bin_stats['bin'],
-            orientation='h',
-            marker_color=['#4A90D9', '#5BA4A4', '#6EC6A0', '#A8D8B9', '#E85D04'],
-            text=bin_stats['Clutter_Index'].round(1),
-            textposition='outside',
+            text         = bin_area["bin"].astype(str),
+            textposition = "top center",
+            textfont     = dict(size=9, color="#5F6472"),
+            hovertemplate = (
+                "<b>Bin:</b> %{text}<br>"
+                "Median Text Area Ratio: %{x:.3f}<br>"
+                "Median Attention Ratio: %{y:.3f}"
+                "<extra></extra>"
+            ),
         ))
+
         fig2.update_layout(
-            plot_bgcolor='white', paper_bgcolor='white',
-            font_family="Syne", height=420,
-            margin=dict(l=0, r=20, t=10, b=0),
-            xaxis=dict(title='Median Clutter Index', showgrid=True, gridcolor='#f0ece4'),
-            yaxis=dict(title='Text Count range', showgrid=False),
-            showlegend=False,
+            plot_bgcolor  = "white",
+            paper_bgcolor = "white",
+            font_family   = "Syne",
+            height        = 320,
+            margin        = dict(l=10, r=10, t=20, b=20),
+            xaxis = dict(
+                title    = "Text Area Ratio (fraction of image covered by text)",
+                showgrid = True, gridcolor="#f0ece4", zeroline=False,
+            ),
+            yaxis = dict(
+                title    = "Attention Ratio (text vs. product)",
+                showgrid = True, gridcolor="#f0ece4", zeroline=False,
+            ),
+            legend = dict(
+                orientation="h", yanchor="bottom", y=1.04,
+                xanchor="left", x=0, font=dict(size=10),
+            ),
         )
+
         st.plotly_chart(fig2, use_container_width=True)
 
-    # ── Interpretation ────────────────────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("##### Interpretation")
-    direction = "confirms" if r < -0.3 else "weakly supports" if r < 0 else "does not support"
-    st.markdown(f"""
-    On the selected **{len(filtered)} images**, the correlation is **r = {r:.3f}**
-    (p = {p:.2e}), which **{direction}** the Banner Blindness hypothesis.
-    Images with 1–2 text elements show a median Clutter Index of
-    **{bin_stats[bin_stats['bin']=='1–2']['Clutter_Index'].values[0]:.1f}** compared to
-    **{bin_stats[bin_stats['bin']=='15+']['Clutter_Index'].values[0]:.1f}** for images with 15+ elements —
-    a {'significant' if abs(r) > 0.3 else 'modest'} reduction in per-element attention.
-    """)
+        above_1 = (scatter_df["Attention_Ratio"] > 1).mean() * 100
+        st.markdown(f"""
+        <div style="font-size:0.84rem; color:#6B7280; line-height:1.5; margin-top:-0.3rem;">
+            Each dot is one image. The x-axis shows how much of the image area is occupied
+            by text; the y-axis shows whether text outcompetes the product for attention
+            (Attention Ratio = Avg_Text_Saliency / avg_product_saliency).
+            The dashed red line marks parity (AR&nbsp;=&nbsp;1): points <strong>above</strong>
+            it mean text wins, <strong>below</strong> means the product wins.
+            Diamond markers show the median per text-count range. Only
+            <strong>{{above_1:.0f}}%</strong> of images have text that outcompetes the
+            product — suggesting that occupying more screen space does not reliably
+            translate into more attention.
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── CHART 3 — Attention Ratio per bin (area + dots) ─────────────────────
+    with col_right:
+        st.markdown("##### Attention Ratio per element by range")
+
+        fig3 = go.Figure()
+
+        # Shaded area under the curve
+        fig3.add_trace(go.Scatter(
+            x         = BIN_LABELS,
+            y         = bin_stats["median_ar"],
+            fill      = "tozeroy",
+            fillcolor = "rgba(216, 90, 48, 0.12)",
+            line      = dict(color="#D85A30", width=2.5),
+            mode      = "lines",
+            name      = "Median Attention Ratio",
+            hoverinfo = "skip",
+            showlegend= False,
+        ))
+
+        # IQR band for attention ratio
+        fig3.add_trace(go.Scatter(
+            x   = BIN_LABELS + BIN_LABELS[::-1],
+            y   = list(bin_stats["q3_ar"]) + list(bin_stats["q1_ar"])[::-1],
+            fill      = "toself",
+            fillcolor = "rgba(216, 90, 48, 0.15)",
+            line      = dict(color="rgba(0,0,0,0)"),
+            hoverinfo = "skip",
+            showlegend= True,
+            name      = "IQR (Q1–Q3)",
+        ))
+
+        # Q3 boundary line
+        fig3.add_trace(go.Scatter(
+            x         = BIN_LABELS,
+            y         = bin_stats["q3_ar"],
+            mode      = "lines",
+            line      = dict(color="#D85A30", width=1, dash="dot"),
+            name      = "Q3",
+            hovertemplate = "<b>Q3:</b> %{y:.2f}<extra></extra>",
+        ))
+ 
+        # Q1 boundary line
+        fig3.add_trace(go.Scatter(
+            x         = BIN_LABELS,
+            y         = bin_stats["q1_ar"],
+            mode      = "lines",
+            line      = dict(color="#D85A30", width=1, dash="dot"),
+            name      = "Q1",
+            hovertemplate = "<b>Q1:</b> %{y:.2f}<extra></extra>",
+        ))
+ 
+        # Q3 label on last point
+        fig3.add_annotation(
+            x=BIN_LABELS[-1], y=bin_stats["q3_ar"].iloc[-1],
+            text="Q3", showarrow=False,
+            xanchor="left", xshift=6,
+            font=dict(size=10, color="#D85A30"),
+        )
+ 
+        # Q1 label on last point
+        fig3.add_annotation(
+            x=BIN_LABELS[-1], y=bin_stats["q1_ar"].iloc[-1],
+            text="Q1", showarrow=False,
+            xanchor="left", xshift=6,
+            font=dict(size=10, color="#D85A30"),
+        )
+
+
+        # Markers with value labels
+        fig3.add_trace(go.Scatter(
+            x    = BIN_LABELS,
+            y    = bin_stats["median_ar"],
+            mode = "markers+text",
+            marker = dict(
+                size  = 10,
+                color = BIN_COLORS,
+                line  = dict(color="white", width=2),
+            ),
+            text         = [f"{v:.2f}" for v in bin_stats["median_ar"]],
+            textposition = "top center",
+            textfont     = dict(size=10, color="#5F6472"),
+            name         = "Median",
+            hovertemplate = (
+                "<b>Range:</b> %{x}<br>"
+                "<b>Median AR:</b> %{y:.3f}<br>"
+                "<b>Δ vs baseline:</b> %{customdata:.1f}%<extra></extra>"
+            ),
+            customdata = bin_stats["pct_ar"],
+        ))
+
+        fig3.update_layout(
+            plot_bgcolor  = "white",
+            paper_bgcolor = "white",
+            font_family   = "Syne",
+            height        = 320,
+            margin        = dict(l=10, r=10, t=20, b=20),
+            xaxis = dict(
+                title    = "Text elements per image (range)",
+                showgrid = False, zeroline=False,
+            ),
+            yaxis = dict(
+                title     = "Median Attention Ratio",
+                showgrid  = True, gridcolor="#f0ece4",
+                zeroline  = False,
+                range     = [0, bin_stats["q3_ar"].max() * 1.35],
+            ),
+            legend = dict(
+                orientation="h", yanchor="bottom", y=1.04,
+                xanchor="left", x=0, font=dict(size=10),
+            ),
+        )
+
+        st.plotly_chart(fig3, use_container_width=True)
+
+        st.markdown(f"""
+        <div style="font-size:0.84rem; color:#6B7280; line-height:1.5; margin-top:-0.3rem;">
+            The <strong>Attention Ratio</strong> measures the share of visual attention
+            captured by each text element relative to the entire scene. The shaded area shows
+            how quickly this share shrinks: from
+            <strong>{bin_stats['median_ar'].iloc[0]:.2f}</strong> with 1–2 elements down to
+            <strong>{bin_stats['median_ar'].iloc[-1]:.2f}</strong> with 15+
+            (<strong>{abs(bin_stats['pct_ar'].iloc[-1]):.0f}% less</strong>).
+            The light band marks the interquartile range — even in the best cases (Q3),
+            images with many text elements remain well below the lower ranges.
+        </div>
+        """, unsafe_allow_html=True)
+            # ── Interpretation ────────────────────────────────────────────────────────
+    
