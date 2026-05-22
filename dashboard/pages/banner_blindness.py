@@ -34,6 +34,29 @@ def show():
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Key concepts ──────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#fff8f0; border:1px solid #f0e0c8; border-radius:6px; padding:1rem 1.2rem; margin:0.8rem 0 1rem 0; font-size:0.87rem; line-height:1.7;">
+    <strong>📐 Key concepts for this page</strong><br><br>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Text Count</strong><br>
+          <span style="color:#555;">The number of distinct text elements (bounding boxes) detected in a single product image.</span>
+        </td>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Clutter Index</strong><br>
+          <span style="color:#555;">Average visual saliency per text element. High = each element is clearly noticed; low = attention is spread too thin and elements fade into the background.</span>
+        </td>
+        <td style="padding:0.3rem 0 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Attention Ratio</strong><br>
+          <span style="color:#555;">Saliency captured by text ÷ saliency captured by the product. Values &gt; 1 mean text "won" the battle for gaze; values &lt; 1 mean the product photo dominated.</span>
+        </td>
+      </tr>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
     # ── Controls ──────────────────────────────────────────────────────────────
@@ -77,6 +100,17 @@ def show():
     c3.metric("p-value", f"{p:.2e}")
     c4.metric("Avg Clutter Index", f"{filtered['Clutter_Index'].mean():.2f}")
 
+    # ── Suggested explorations ────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#f0faf0; border:1px solid #b8d8b8; border-radius:6px; padding:0.75rem 1.1rem; margin-bottom:0.5rem; font-size:0.84rem; line-height:1.65;">
+    💡 <strong>Suggested explorations:</strong><br>
+    &nbsp;&nbsp;• Set <em>Text Count</em> to <strong>1–5</strong> → see how attention is high when few elements compete<br>
+    &nbsp;&nbsp;• Set <em>Text Count</em> to <strong>15–53</strong> → watch the Clutter Index collapse below the banner blindness threshold<br>
+    &nbsp;&nbsp;• Filter by <strong>Q1 Top-Left</strong> only → check whether a better screen position can counteract clutter<br>
+    &nbsp;&nbsp;• Compare <strong>Q1 vs Q4</strong> to see if placement modifies the banner blindness effect
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
     # ── Main scatter ──────────────────────────────────────────────────────────
 # ── Palette & bin setup ──────────────────────────────────────────────────
@@ -116,6 +150,15 @@ def show():
     # ════════════════════════════════════════════════════════════════════════
     # CHART 1 — Binned bar + IQR + trend  (full width)
     # ════════════════════════════════════════════════════════════════════════
+    st.markdown("""
+    <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+    📌 <strong>What you're looking at:</strong> images are grouped into five text-count ranges (1–2, 3–5, 6–9, 10–14, 15+).
+    Each bar shows the <strong>median Clutter Index</strong> for that group — how much attention each text element receives on average.
+    The shaded band is the interquartile range (middle 50% of images), and the dashed orange trend line connects the medians.
+    The red dashed line marks the <strong>banner blindness threshold (~7)</strong>: below it, individual elements are practically invisible.
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("##### Text Count vs Clutter Index")
 
     fig_main = go.Figure()
@@ -230,6 +273,15 @@ def show():
     # ════════════════════════════════════════════════════════════════════════
     # CHART 2 + CHART 3  side-by-side
     # ════════════════════════════════════════════════════════════════════════
+    st.markdown("""
+    <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+    📌 <strong>Two complementary views of the same effect:</strong>
+    <strong>Chart 2</strong> (left) places each image as a dot — how much screen space text occupies vs. how much attention it actually wins.
+    <strong>Chart 3</strong> (right) traces how the Attention Ratio evolves as text count grows, with the spread (IQR band) showing how consistent the pattern is.
+    Read them together: Chart 2 shows the raw data, Chart 3 shows the trend.
+    </div>
+    """, unsafe_allow_html=True)
+
     col_left, col_right = st.columns(2)
 
     # ── CHART 2 — Text_Area_Ratio vs Attention_Ratio scatter ────────────────
@@ -334,7 +386,7 @@ def show():
             The dashed red line marks parity (AR&nbsp;=&nbsp;1): points <strong>above</strong>
             it mean text wins, <strong>below</strong> means the product wins.
             Diamond markers show the median per text-count range. Only
-            <strong>{{above_1:.0f}}%</strong> of images have text that outcompetes the
+            <strong>{above_1:.0f}%</strong> of images have text that outcompetes the
             product — suggesting that occupying more screen space does not reliably
             translate into more attention.
         </div>
@@ -466,5 +518,19 @@ def show():
             images with many text elements remain well below the lower ranges.
         </div>
         """, unsafe_allow_html=True)
-            # ── Interpretation ────────────────────────────────────────────────────────
-    
+
+    # ── Takeaway ──────────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#fdf3e7; border-left:4px solid #E85D04; padding:0.8rem 1rem; margin-top:1.5rem; font-size:0.87rem; line-height:1.65;">
+    <strong>🔍 Takeaway — Banner Blindness:</strong><br>
+    More text does not mean more communication. Each additional element competes with all the others
+    for a finite pool of viewer attention — and beyond ~7 elements, the Clutter Index drops below the
+    banner blindness threshold, meaning individual text becomes practically invisible.
+    The Attention Ratio tells the same story from a different angle: images with 15+ elements see
+    their per-element share of attention reduced by roughly <strong>{pct}%</strong> compared to
+    images with just 1–2 elements.
+    <br><br>
+    <strong>For UX designers: fewer, bolder text elements consistently outperform crowded layouts.
+    Prioritise one clear message per image.</strong>
+    </div>
+    """.format(pct=int(abs(bin_stats['pct_ar'].iloc[-1]))), unsafe_allow_html=True)

@@ -90,6 +90,9 @@ h2, h3 { font-family: 'Syne', sans-serif; font-weight: 700; }
 
 /* Divider */
 hr { border: none; border-top: 1px solid #e8e4dc; margin: 1.5rem 0; }
+
+/* Hide Streamlit's auto-generated pages/ navigation */
+[data-testid="stSidebarNav"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,7 +102,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown('<p class="section-label">Navigate</p>', unsafe_allow_html=True)
     page = st.radio(
-        label="",
+        label="Page",
         options=[
             "🏠  Overview",
             "📉  Banner Blindness",
@@ -118,15 +121,7 @@ with st.sidebar:
 if "Overview" in page:
     from pages.overview import show; show()
 elif "Banner Blindness" in page:
-    import importlib
-    import pages.banner_blindness as banner_blindness
-
-    importlib.reload(banner_blindness)
-
-    st.sidebar.success("Banner Blindness reloaded")
-    st.sidebar.code(banner_blindness.__file__)
-
-    banner_blindness.show()
+    from pages.banner_blindness import show; show()
 elif "Spatial" in page:
     from pages.spatial import show; show()
 elif "Size" in page:

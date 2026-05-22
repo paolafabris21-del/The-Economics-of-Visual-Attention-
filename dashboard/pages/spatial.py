@@ -25,6 +25,29 @@ def show():
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Key concepts ──────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#fff8f0; border:1px solid #f0e0c8; border-radius:6px; padding:1rem 1.2rem; margin:0.8rem 0 1rem 0; font-size:0.87rem; line-height:1.7;">
+    <strong>📐 Key concepts for this page</strong><br><br>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Dominant Quadrant</strong><br>
+          <span style="color:#555;">The screen quadrant (Top-Left, Top-Right, Bottom-Left, Bottom-Right) where the majority of an image's text bounding boxes are concentrated.</span>
+        </td>
+        <td style="padding:0.3rem 0.8rem 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Region Mean Saliency</strong><br>
+          <span style="color:#555;">The average eye-tracking intensity inside a single text bounding box. Higher = that specific text region attracted stronger, more sustained gaze.</span>
+        </td>
+        <td style="padding:0.3rem 0 0.3rem 0; width:33%; vertical-align:top;">
+          <strong>Attention Ratio</strong><br>
+          <span style="color:#555;">Saliency captured by all text ÷ saliency captured by the product. Values &gt; 1 mean text dominated the viewer's gaze.</span>
+        </td>
+      </tr>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
     # ── Level selector ────────────────────────────────────────────────────────
@@ -40,10 +63,29 @@ def show():
         "The two levels can tell slightly different stories, so read them together."
     )
 
+    # ── Suggested explorations ────────────────────────────────────────────────
+    st.markdown("""
+    <div style="background:#f0faf0; border:1px solid #b8d8b8; border-radius:6px; padding:0.75rem 1.1rem; margin-bottom:0.5rem; font-size:0.84rem; line-height:1.65;">
+    💡 <strong>Suggested explorations:</strong><br>
+    &nbsp;&nbsp;• Start with <strong>Image level</strong> for the big picture — which quadrant is most used vs. which earns more attention<br>
+    &nbsp;&nbsp;• Switch to <strong>Region level</strong> for the fine-grained story — how individual bounding boxes perform across quadrants<br>
+    &nbsp;&nbsp;• On Region level, compare the <strong>violin widths</strong>: Q1 and Q2 have heavier upper tails (some very high-saliency outliers)<br>
+    &nbsp;&nbsp;• Check the <strong>4×4 heatmap</strong> on Region level — it shows exactly where on the canvas attention concentrates most
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
     col_left, col_right = st.columns([1, 1])
 
     if "Image level" in level:
+        st.markdown("""
+        <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+        📌 <strong>What you're looking at (Image level):</strong> each of the 914 images with text is assigned to its <strong>dominant quadrant</strong> — the screen region where most of its text lands.
+        The <strong>boxplot</strong> (left) shows how the Attention Ratio varies across those quadrant groups.
+        The <strong>bar chart</strong> (right) shows how often designers actually place text in each quadrant, so you can spot the gap between design habit and attention reality.
+        </div>
+        """, unsafe_allow_html=True)
+
         # ── Image-level: boxplot of Attention_Ratio by dominant quadrant ──────
         with col_left:
             st.markdown("##### Attention Ratio by Dominant Quadrant")
@@ -134,7 +176,24 @@ def show():
                 "the canvas (Q3 + Q4), even though Q1 attracts marginally more attention."
             )
 
+        st.markdown("""
+        <div style="background:#fdf3e7; border-left:4px solid #E85D04; padding:0.8rem 1rem; margin-top:1.2rem; font-size:0.87rem; line-height:1.65;">
+        <strong>🔍 Takeaway — Image level:</strong><br>
+        Q4 Bottom-Right is the most used placement (287 images, ~31%), yet Q1 Top-Left earns a higher median Attention Ratio.
+        The gap is statistically real (Kruskal-Wallis p = 0.044) though modest — placement alone does not explain everything.
+        Switch to <strong>Region level</strong> for the stronger, more granular signal where all 8,447 bounding boxes are analysed individually.
+        </div>
+        """, unsafe_allow_html=True)
+
     else:
+        st.markdown("""
+        <div style="background:#f7f5f0; border-left:3px solid #0d0d0d; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.88rem; line-height:1.6;">
+        📌 <strong>What you're looking at (Region level):</strong> each of the 8,447 individual text bounding boxes becomes one data point.
+        The <strong>violin plot</strong> (left) shows the full distribution of attention per box by quadrant — not just the average, but the shape of the spread and any outliers.
+        The <strong>4×4 heatmap</strong> (right) breaks the canvas into a grid and shows where attention is hottest across the entire image surface.
+        </div>
+        """, unsafe_allow_html=True)
+
         # ── Region-level: violin + heatmap ────────────────────────────────────
         with col_left:
             st.markdown("##### Region Mean Saliency by Quadrant")
@@ -232,3 +291,15 @@ def show():
                 "Region Mean Saliency. The ranking Q1 > Q2 > Q3 > Q4 mirrors the violin "
                 "plot on the left."
             )
+
+        st.markdown("""
+        <div style="background:#fdf3e7; border-left:4px solid #E85D04; padding:0.8rem 1rem; margin-top:1.2rem; font-size:0.87rem; line-height:1.65;">
+        <strong>🔍 Takeaway — Region level:</strong><br>
+        At the bounding-box level the Q1 advantage is unmistakable: median saliency <strong>53.4 vs. 29.7</strong> for Q4
+        (Kruskal-Wallis p = 2.3×10⁻¹⁸). The heatmap confirms the pattern spatially — the top-centre of the canvas
+        is consistently the hottest zone for gaze, regardless of which image is shown.
+        <br><br>
+        <strong>For UX designers: if a text element must compete for attention, placing it in the top-left
+        or top-centre gives it the strongest statistical advantage of being seen.</strong>
+        </div>
+        """, unsafe_allow_html=True)
