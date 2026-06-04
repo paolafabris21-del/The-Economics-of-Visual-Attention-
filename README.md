@@ -19,10 +19,10 @@ dashboard/
 │   └── image_explorer.py  # Per-image viewer: stimulus, saliency map, bboxes
 ├── utils/
 │   └── data.py             # Cached CSV loading, image path helper
-├── data/                   # ← PUT CSV FILES HERE
+├── data/                   
 │   ├── metrics_global_v3.csv
 │   └── metrics_regions_v2.csv
-├── images/                 # ← PUT IMAGE FOLDERS HERE
+├── images/                 
 │   ├── ALLSTIMULI/         # 1.jpg, 2.jpg, ... 972.jpg
 │   └── ALLFIXATIONMAPS/    # 1_fixMap.jpg, 1_fixPts.jpg, ...
 ├── requirements.txt
