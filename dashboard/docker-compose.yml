@@ -6,7 +6,7 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - .:/app                       # <--- QUESTA È LA RIGA MANCANTE!
+      - .:/app                       
       - ./data:/data:ro
       - ./images/ALLSTIMULI:/images/ALLSTIMULI:ro
       - ./images/ALLFIXATIONMAPS:/images/ALLFIXATIONMAPS:ro

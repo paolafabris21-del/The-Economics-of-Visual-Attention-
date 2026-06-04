@@ -34,7 +34,7 @@ dashboard/
 
 ## Dashboard pages
 
-### 🏠 Overview
+### Overview
 Landing page with narrative context, top-level KPIs, and the three key findings of the project:
 - **Banner Blindness** — more text elements → less attention per element (r = −0.49)
 - **Top-Left is prime real estate** — Q1 achieves the highest median saliency (53.4) despite being the least used quadrant by designers
@@ -42,7 +42,7 @@ Landing page with narrative context, top-level KPIs, and the three key findings 
 
 Also includes two summary charts: placement vs. attention by quadrant, and the Attention Ratio distribution across all images.
 
-### 📉 Banner Blindness
+### Banner Blindness
 Quantitative analysis of the phenomenon: how much does each text element lose in effectiveness as the number of texts in the same image grows?
 
 - Interactive slider on Text Count and filter by dominant quadrant
@@ -51,21 +51,21 @@ Quantitative analysis of the phenomenon: how much does each text element lose in
 - **Chart 3:** Attention Ratio trend by range with IQR band
 - Live KPIs: Pearson r, p-value, and mean Clutter Index updated on every filter change
 
-### 🗺 Spatial Effectiveness
+### Spatial Effectiveness
 Comparison of attention captured across the four screen quadrants (Top-Left, Top-Right, Bottom-Left, Bottom-Right).
 
 - Analysis at **image level** (dominant quadrant) and **region level** (per individual bounding box)
 - Kruskal-Wallis H = 85.2, p = 2.3×10⁻¹⁸: differences across quadrants are highly significant
 - Q1 Top-Left: median saliency 53.4 vs Q4 Bottom-Right: 29.7 — even though Q4 is the most used by designers (n = 287)
 
-### 📐 Size vs. Attention
+### Size vs. Attention
 Answers the question: does making a text element larger capture more attention?
 
 - **Image level:** Text Area Ratio vs Attention Ratio (r = −0.197, consistent with Banner Blindness)
 - **Region level:** individual bbox area vs total saliency (r = +0.71) vs saliency per pixel (r ≈ +0.03)
 - Conclusion: size increases absolute saliency, but not attention density
 
-### 🖼 Image Explorer
+### Image Explorer
 Per-image viewer with three sections:
 1. **Filters & selection** — filter by Text Count and dominant quadrant, sort results, pick an image
 2. **Image metrics** — Text Count, Attention Ratio, Clutter Index, dominant quadrant
@@ -75,7 +75,7 @@ Requires image files in `dashboard/images/`.
 
 ---
 
-## Setup — Option A: Docker (recommended for submission)
+## Setup — Option A: Docker 
 
 ### 1. Copy the data files
 
@@ -84,7 +84,7 @@ Requires image files in `dashboard/images/`.
 cp /path/to/metrics_global_v3.csv  dashboard/data/
 cp /path/to/metrics_regions_v2.csv dashboard/data/
 
-# Image folders (copy from your ECdata folder)
+# Image folders 
 cp -r /path/to/ECdata/ALLSTIMULI        dashboard/images/
 cp -r /path/to/ECdata/ALLFIXATIONMAPS   dashboard/images/
 ```
